@@ -29,7 +29,7 @@ func (client *Model) Connect(addr string, port int) error {
 		return err
 	}
 
-	err := client.Send("C GRNVS V:1.0")
+	err := client.Send(Netstring("C GRNVS V:1.0"))
 	return err
 }
 

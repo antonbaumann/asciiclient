@@ -2,6 +2,7 @@ package client
 
 import (
 	"errors"
+	"fmt"
 	"net"
 )
 
@@ -25,5 +26,9 @@ func convertIPv6ToArray(addr *net.IPAddr) ([16]byte, error) {
 	}
 	copy(arr[:], ipv6)
 	return arr, nil
+}
+
+func Netstring(message string) string {
+	return fmt.Sprintf("%v:%v,", len(message), message)
 }
 
