@@ -36,7 +36,10 @@ func (client *Model) Connect(addr string, port int) error {
 func (client *Model) Send(message string) error {
 	errMsg := "send error: %v"
 	err := syscall.Sendto(client.socket, []byte(message), 0, client.sockAddrRemote)
-	return fmt.Errorf(errMsg, err)
+	if err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+	return nil
 }
 
 func (client *Model) createTCPSocket() error {
