@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"net"
 	"syscall"
 )
@@ -28,12 +29,14 @@ func (client *Model) Connect(addr string, port int) error {
 		return err
 	}
 
-	err := client.Send("hallo")
+	err := client.Send("C GRNVS V:1.0")
 	return err
 }
 
 func (client *Model) Send(message string) error {
-	return syscall.Sendto(client.socket, []byte(message), 0, client.sockAddrRemote)
+	errMsg := "send error: %v"
+	err := syscall.Sendto(client.socket, []byte(message), 0, client.sockAddrRemote)
+	return fmt.Errorf(errMsg, err)
 }
 
 func (client *Model) createTCPSocket() error {
@@ -46,30 +49,23 @@ func (client *Model) createTCPSocket() error {
 }
 
 func (client *Model) dial(addr string, port int) error {
-	ipAddr, err := net.ResolveIPAddr("", addr)
+	errMsg := "dial error: %v"
+
+	ipAddr, err := net.ResolveIPAddr("ip6", addr)
 	if err != nil {
-		return err
+		return fmt.Errorf(errMsg, err)
 	}
 
-	// check if ipv6
-	if ipAddr.IP.To4() == nil {
-		ipv6, err := convertIPv6ToArray(ipAddr)
-		if err != nil {
-			return err
-		}
-		client.sockAddrRemote = &syscall.SockaddrInet6{
-			Port: port,
-			Addr: ipv6,
-		}
-	} else {
-		ipv4, err := convertIPv4ToArray(ipAddr)
-		if err != nil {
-			return err
-		}
-		client.sockAddrRemote = &syscall.SockaddrInet4{
-			Port: port,
-			Addr: ipv4,
-		}
+	ipv6, err := convertIPv6ToArray(ipAddr)
+	if err != nil {
+		return fmt.Errorf(errMsg, err)
 	}
-	return nil
+
+	client.sockAddrRemote = &syscall.SockaddrInet6{
+		Port: port,
+		Addr: ipv6,
+	}
+
+	err = syscall.Connect(client.socket, client.sockAddrRemote)
+	return fmt.Errorf(errMsg, err)
 }
