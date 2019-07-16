@@ -37,7 +37,7 @@ func (client *Model) Send(message string) error {
 }
 
 func (client *Model) createTCPSocket() error {
-	fd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_STREAM, syscall.IP_PORTRANGE_DEFAULT)
+	fd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_STREAM, 0)
 	if err != nil {
 		return err
 	}
