@@ -67,5 +67,8 @@ func (client *Model) dial(addr string, port int) error {
 	}
 
 	err = syscall.Connect(client.socket, client.sockAddrRemote)
-	return fmt.Errorf(errMsg, err)
+	if err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+	return nil
 }
