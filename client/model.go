@@ -37,7 +37,7 @@ func (client *Model) Connect(addr string, port int) error {
 	}
 
 	protocolMsg := fmt.Sprintf("%v %v", ClientCtrlPrefix, Protocol)
-	if err := client.sendCtrl(Netstring(protocolMsg)); err != nil {
+	if err := client.sendCtrl(ToNetstring(protocolMsg)); err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
 
@@ -67,7 +67,11 @@ func (client *Model) recvCtrl() (string, error) {
 		return "", fmt.Errorf(errMsg, err)
 	}
 	data := client.buffer[:length]
-	return string(data), nil
+	message, err := FromNetstring(string(data))
+	if err != nil {
+		return message, fmt.Errorf(errMsg, err)
+	}
+	return message, nil
 }
 
 func (client *Model) createCtrlSocket() error {

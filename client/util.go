@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
+	"strings"
 )
 
 func convertIPv4ToArray(addr *net.IPAddr) ([4]byte, error) {
@@ -28,7 +30,19 @@ func convertIPv6ToArray(addr *net.IPAddr) ([16]byte, error) {
 	return arr, nil
 }
 
-func Netstring(message string) string {
+func ToNetstring(message string) string {
 	return fmt.Sprintf("%v:%v,", len(message), message)
+}
+
+func FromNetstring(message string) (string, error) {
+	lst := strings.SplitN(message, ":", 1)
+	if len(lst) < 2 {
+		return message, fmt.Errorf("not a netstring: %v", message)
+	}
+	length, err := strconv.Atoi(lst[0])
+	if err != nil {
+		return message, fmt.Errorf("not a netstring: %v", message)
+	}
+	return lst[1][:length], nil
 }
 
