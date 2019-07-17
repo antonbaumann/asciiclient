@@ -104,8 +104,7 @@ func (client *Model) recvCtrl() (string, error) {
 		if resp.err != nil {
 			return "", fmt.Errorf(errMsg, resp.err)
 		}
-		netstring := string(client.buffer[resp.length])
-		fmt.Println(netstring)
+		netstring := string(client.buffer[:resp.length])
 		message, err := FromNetstring(netstring)
 		if err != nil {
 			return message, fmt.Errorf(errMsg, err)
