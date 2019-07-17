@@ -55,3 +55,7 @@ func bindRandomPort(socket int) (int, error) {
 	}
 	return -1, fmt.Errorf(errMsg, err)
 }
+
+func recvProtocolConfirmation() error {
+
+}

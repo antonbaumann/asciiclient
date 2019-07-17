@@ -5,11 +5,13 @@ import (
 	"net"
 	"strings"
 	"syscall"
+	"time"
 )
 
 const (
 	CtrlClientPrefix = "C"
 	CtrlServerPrefix = "S"
+	CtrlReceiveTimeoutSeconds = 3 * time.Second
 )
 
 //exchangeProtocolVersion initiates the connection and checks
@@ -85,16 +87,32 @@ func (client *Model) sendCtrl(message string) error {
 //recvCtrl is a helper method for receiving strings over the control channel
 func (client *Model) recvCtrl() (string, error) {
 	errMsg := "[control] receive error: %v"
-	length, _, err := syscall.Recvfrom(client.ctrlSocket, client.buffer, 0)
-	if err != nil {
-		return "", fmt.Errorf(errMsg, err)
+
+	type response struct {
+		length int
+		err    error
 	}
-	data := client.buffer[:length]
-	message, err := FromNetstring(string(data))
-	if err != nil {
-		return message, fmt.Errorf(errMsg, err)
+	ch := make(chan *response, 1)
+
+	go func() {
+		length, _, err := syscall.Recvfrom(client.ctrlSocket, client.buffer, 0)
+		ch <- &response{length, err}
+	}()
+
+	select {
+	case resp := <-ch:
+		if resp.err != nil {
+			return "", fmt.Errorf(errMsg, resp.err)
+		}
+		data := client.buffer[resp.length]
+		message, err := FromNetstring(string(data))
+		if err != nil {
+			return message, fmt.Errorf(errMsg, err)
+		}
+		return parseServerMessage(message)
+	case <-time.After(CtrlReceiveTimeoutSeconds):
+		return "", fmt.Errorf(errMsg, "timeout")
 	}
-	return parseServerMessage(message)
 }
 
 func parseServerMessage(message string) (string, error) {
@@ -152,4 +170,3 @@ func (client *Model) dial(addr string, port int) error {
 	}
 	return nil
 }
-

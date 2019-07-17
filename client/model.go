@@ -18,14 +18,15 @@ type Model struct {
 	dataSocket     int
 	token          string
 	sockAddrRemote syscall.Sockaddr
-	buffer         []byte
+
+	buffer      []byte
 }
 
 //New creates a new Client
 func New(nickname string) *Model {
 	return &Model{
-		Nickname: nickname,
-		buffer:   make([]byte, 4096),
+		Nickname:    nickname,
+		buffer:      make([]byte, 4096),
 	}
 }
 
@@ -58,4 +59,11 @@ func (client *Model) Connect(addr string, port int) error {
 	}
 
 	return nil
+}
+
+func (client *Model) Send(message string) error {
+	errMsg := "send error: %v"
+	if err := recvProtocolConfirmation(); err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
 }
