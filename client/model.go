@@ -72,7 +72,8 @@ func (client *Model) exchangeProtocol() error {
 
 func (client *Model) sendNickname() error {
 	errMsg := "[control] send nickname error: %v"
-	if err := client.sendCtrl(ToNetstring(client.Nickname)); err != nil {
+	nickname := ToNetstring(fmt.Sprintf("%v %v", ClientCtrlPrefix, client.Nickname))
+	if err := client.sendCtrl(nickname); err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
 	return nil
