@@ -30,8 +30,7 @@ func (client *Model) exchangeProtocolVersion() error {
 
 //sendProtocolVersion sends the protocol version used by the client to the server
 func (client *Model) sendProtocolVersion() error {
-	protocolMsg := fmt.Sprintf("%v %v", CtrlClientPrefix, ProtocolVersion)
-	if err := client.sendCtrl(ToNetstring(protocolMsg)); err != nil {
+	if err := client.sendCtrl(ProtocolVersion); err != nil {
 		return err
 	}
 	return nil
@@ -44,7 +43,7 @@ func (client *Model) receiveProtocolVersion() error {
 	if err != nil {
 		return err
 	}
-	if msg != fmt.Sprintf("%v %v", CtrlServerPrefix, ProtocolVersion) {
+	if msg != ProtocolVersion {
 		return err
 	}
 	return nil
@@ -53,8 +52,7 @@ func (client *Model) receiveProtocolVersion() error {
 //sendNickname sends the client nickname to the server
 func (client *Model) sendNickname() error {
 	errMsg := "[control] send nickname error: %v"
-	nickname := ToNetstring(fmt.Sprintf("%v %v", CtrlClientPrefix, client.Nickname))
-	if err := client.sendCtrl(nickname); err != nil {
+	if err := client.sendCtrl(client.Nickname); err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
 	return nil
@@ -87,7 +85,8 @@ func (client *Model) recvToken() error {
 //sendCtrl is a helper method for sending strings over the control channel
 func (client *Model) sendCtrl(message string) error {
 	errMsg := "[control] send error: %v"
-	err := syscall.Sendto(client.ctrlSocket, []byte(message), 0, client.sockAddrRemote)
+	netstring := ToNetstring(fmt.Sprintf("%v %v", CtrlClientPrefix, message))
+	err := syscall.Sendto(client.ctrlSocket, []byte(netstring), 0, client.sockAddrRemote)
 	if err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
@@ -106,7 +105,21 @@ func (client *Model) recvCtrl() (string, error) {
 	if err != nil {
 		return message, fmt.Errorf(errMsg, err)
 	}
-	return message, nil
+	return parseServerMessage(message)
+}
+
+func parseServerMessage(message string) (string, error) {
+	lst := strings.SplitN(message, " ", 2)
+	if len(lst) < 2 {
+		return "", fmt.Errorf("server response malformed: %v", message)
+	}
+	if lst[0] == ErrorPrefix {
+		return "", fmt.Errorf("server error: %v", message)
+	}
+	if lst[0] == CtrlServerPrefix {
+		return lst[1], nil
+	}
+	return "", fmt.Errorf("server response malformed: %v", message)
 }
 
 //createCtrlSocket creates a socket for the control channel

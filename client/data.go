@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"strconv"
 	"syscall"
 )
 
@@ -31,8 +32,7 @@ func (client *Model) createListeningSocket() error {
 
 func (client *Model) sendListeningPortNumber() error {
 	errMsg := "[data] send data port error: %v"
-	portMsg := fmt.Sprintf("%v %v", CtrlClientPrefix, client.ListeningPort)
-	if err := client.sendCtrl(ToNetstring(portMsg)); err != nil {
+	if err := client.sendCtrl(ToNetstring(strconv.Itoa(client.ListeningPort))); err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
 	return nil
