@@ -57,5 +57,5 @@ func bindRandomPort(socket int) (int, error) {
 }
 
 func recvProtocolConfirmation() error {
-
+	return nil
 }

@@ -66,4 +66,5 @@ func (client *Model) Send(message string) error {
 	if err := recvProtocolConfirmation(); err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
+	return nil
 }
