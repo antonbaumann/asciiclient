@@ -3,6 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"strconv"
 	"strings"
@@ -30,10 +31,17 @@ func convertIPv6ToArray(addr *net.IPAddr) ([16]byte, error) {
 	return arr, nil
 }
 
+func getRandomUserPort() int {
+	size := 0xbfff - 0x400
+	return rand.Intn(size) + 0x400
+}
+
+//ToNetstring converts a string to netstring
 func ToNetstring(message string) string {
 	return fmt.Sprintf("%v:%v,", len(message), message)
 }
 
+//FromNetstring converts a netstring to a string
 func FromNetstring(message string) (string, error) {
 	lst := strings.SplitN(message, ":", 2)
 	if len(lst) < 2 {
