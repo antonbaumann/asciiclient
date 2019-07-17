@@ -4,12 +4,18 @@ import (
 	"fmt"
 	"strconv"
 	"syscall"
+	"time"
 )
 
 const (
-	DataClientPrefix = "D"
-	DataServerPrefix = "T"
+	DataClientPrefix   = "D"
+	DataServerPrefix   = "T"
+	DataReceiveTimeout = 5 * time.Second
 )
+
+type data struct {
+	err error
+}
 
 //createListeningSocket creates a socket for the data channel
 func (client *Model) createListeningSocket() error {
@@ -56,6 +62,22 @@ func bindRandomPort(socket int) (int, error) {
 	return -1, fmt.Errorf(errMsg, err)
 }
 
-func recvProtocolConfirmation() error {
-	return nil
+func (client *Model) recvProtocolConfirmation() error {
+	errMsg := "receive protocol confirmation error: %v"
+	msg, err := client.recvData()
+	if err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+	if msg != ProtocolVersion {
+		return fmt.Errorf(errMsg, "protocols do not match")
+	}
+}
+
+func (client *Model) recvData() (string, error) {
+	errMsg := "[data] %v"
+	msg, err := client.recv(client.dataSocket, DataReceiveTimeout, DataServerPrefix)
+	if err != nil {
+		return msg, fmt.Errorf(errMsg, err)
+	}
+	return msg, nil
 }

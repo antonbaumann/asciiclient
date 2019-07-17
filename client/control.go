@@ -3,15 +3,14 @@ package client
 import (
 	"fmt"
 	"net"
-	"strings"
 	"syscall"
 	"time"
 )
 
 const (
-	CtrlClientPrefix = "C"
-	CtrlServerPrefix = "S"
-	CtrlReceiveTimeoutSeconds = 3 * time.Second
+	CtrlClientPrefix   = "C"
+	CtrlServerPrefix   = "S"
+	CtrlReceiveTimeout = 3 * time.Second
 )
 
 //exchangeProtocolVersion initiates the connection and checks
@@ -86,47 +85,12 @@ func (client *Model) sendCtrl(message string) error {
 
 //recvCtrl is a helper method for receiving strings over the control channel
 func (client *Model) recvCtrl() (string, error) {
-	errMsg := "[control] receive error: %v"
-
-	type response struct {
-		length int
-		err    error
+	errMsg := "[control] %v"
+	msg, err := client.recv(client.ctrlSocket, CtrlReceiveTimeout, CtrlServerPrefix)
+	if err != nil {
+		return msg, fmt.Errorf(errMsg, err)
 	}
-	ch := make(chan *response, 1)
-
-	go func() {
-		length, _, err := syscall.Recvfrom(client.ctrlSocket, client.buffer, 0)
-		ch <- &response{length, err}
-	}()
-
-	select {
-	case resp := <-ch:
-		if resp.err != nil {
-			return "", fmt.Errorf(errMsg, resp.err)
-		}
-		netstring := string(client.buffer[:resp.length])
-		message, err := FromNetstring(netstring)
-		if err != nil {
-			return message, fmt.Errorf(errMsg, err)
-		}
-		return parseServerMessage(message)
-	case <-time.After(CtrlReceiveTimeoutSeconds):
-		return "", fmt.Errorf(errMsg, "timeout")
-	}
-}
-
-func parseServerMessage(message string) (string, error) {
-	lst := strings.SplitN(message, " ", 2)
-	if len(lst) < 2 {
-		return "", fmt.Errorf("server response malformed: %v", message)
-	}
-	if lst[0] == ErrorPrefix {
-		return "", fmt.Errorf("server error: %v", message)
-	}
-	if lst[0] == CtrlServerPrefix {
-		return lst[1], nil
-	}
-	return "", fmt.Errorf("server response malformed: %v", message)
+	return msg, nil
 }
 
 //createCtrlSocket creates a socket for the control channel
