@@ -12,7 +12,8 @@ const (
 
 type Model struct {
 	Nickname       string
-	Port           int
+	RemotePort     int
+	ListeningPort  int
 	ctrlSocket     int
 	dataSocket     int
 	token          string
@@ -48,9 +49,11 @@ func (client *Model) Connect(addr string, port int) error {
 		return fmt.Errorf(errMsg, err)
 	}
 
-	fmt.Println(client.token)
+	if err := client.createListeningSocket(); err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
 
-	if err := client.createDataSocket(); err != nil {
+	if err := client.sendListeningPortNumber(); err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
 

@@ -31,7 +31,8 @@ func convertIPv6ToArray(addr *net.IPAddr) ([16]byte, error) {
 	return arr, nil
 }
 
-func getRandomUserPort() int {
+//GetRandomUserPort returns a random port number between 1024 and 49151
+func GetRandomUserPort() int {
 	size := 0xbfff - 0x400
 	return rand.Intn(size) + 0x400
 }

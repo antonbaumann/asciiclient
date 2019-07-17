@@ -11,4 +11,7 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	fmt.Println("SUCCESS")
+	fmt.Println(asciiClient.ListeningPort)
 }
