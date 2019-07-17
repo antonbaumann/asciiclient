@@ -61,23 +61,12 @@ func (client *Model) sendNickname() error {
 //recvToken receives the token from the server
 func (client *Model) recvToken() error {
 	errMsg := "[control] receive token error: %v"
-	msg, err := client.recvCtrl()
+	token, err := client.recvCtrl()
 	if err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
 
-	if !strings.HasPrefix(msg, CtrlServerPrefix) {
-		err := fmt.Errorf("server response malformed: %v", msg)
-		return fmt.Errorf(errMsg, err)
-	}
-
-	lst := strings.SplitN(msg, " ", 2)
-	if len(lst) < 2 {
-		err := fmt.Errorf("server response malformed: %v", msg)
-		return fmt.Errorf(errMsg, err)
-	}
-
-	client.token = lst[1]
+	client.token = token
 
 	return nil
 }
