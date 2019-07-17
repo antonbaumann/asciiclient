@@ -35,7 +35,7 @@ func ToNetstring(message string) string {
 }
 
 func FromNetstring(message string) (string, error) {
-	lst := strings.SplitN(message, ":", 1)
+	lst := strings.SplitN(message, ":", 2)
 	if len(lst) < 2 {
 		return message, fmt.Errorf("not a netstring: %v", message)
 	}
