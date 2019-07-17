@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 	"net"
+	"strings"
 	"syscall"
 )
 
@@ -36,17 +37,66 @@ func (client *Model) Connect(addr string, port int) error {
 		return fmt.Errorf(errMsg, err)
 	}
 
+	if err := client.exchangeProtocol(); err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+
+	if err := client.sendNickname(); err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+
+	if err := client.recvToken(); err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+
+	fmt.Println(client.token)
+
+	return nil
+}
+
+func (client *Model) exchangeProtocol() error {
+	errMsg := "[control] protocol exchange error: %v"
 	protocolMsg := fmt.Sprintf("%v %v", ClientCtrlPrefix, Protocol)
 	if err := client.sendCtrl(ToNetstring(protocolMsg)); err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
+	msg, err := client.recvCtrl()
+	if err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+	if msg != fmt.Sprintf("%v %v", ServerCtrlPrefix, Protocol) {
+		return fmt.Errorf(errMsg, err)
+	}
+	return nil
+}
 
+func (client *Model) sendNickname() error {
+	errMsg := "[control] send nickname error: %v"
+	if err := client.sendCtrl(ToNetstring(client.Nickname)); err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+	return nil
+}
+
+func (client *Model) recvToken() error {
+	errMsg := "[control] receive token error: %v"
 	msg, err := client.recvCtrl()
 	if err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
 
-	fmt.Println(msg)
+	if !strings.HasPrefix(msg, ServerCtrlPrefix) {
+		err := fmt.Errorf("server response malformed: %v", msg)
+		return fmt.Errorf(errMsg, err)
+	}
+
+	lst := strings.SplitN(msg, " ", 2)
+	if len(lst) < 2 {
+		err := fmt.Errorf("server response malformed: %v", msg)
+		return fmt.Errorf(errMsg, err)
+	}
+
+	client.token = lst[1]
 
 	return nil
 }
