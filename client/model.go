@@ -22,14 +22,14 @@ type Model struct {
 	token          string
 	sockAddrRemote syscall.Sockaddr
 
-	buffer      []byte
+	buffer []byte
 }
 
 //New creates a new Client
 func New(nickname string) *Model {
 	return &Model{
-		Nickname:    nickname,
-		buffer:      make([]byte, 4096),
+		Nickname: nickname,
+		buffer:   make([]byte, 4096),
 	}
 }
 
@@ -59,16 +59,17 @@ func (client *Model) Connect(addr string, port int) error {
 		return fmt.Errorf(errMsg, err)
 	}
 
-	if err := client.sendListeningPortNumber(); err != nil {
-		return fmt.Errorf(errMsg, err)
-	}
-
 	return nil
 }
 
 func (client *Model) Send(message string) error {
 	errMsg := "send error: %v"
-	if err := client.recvProtocolConfirmation(); err != nil {
+	nfd, sa, err := client.awaitServerConnection()
+	if err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+
+	if err := client.recvProtocolConfirmation(nfd, sa); err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
 	return nil

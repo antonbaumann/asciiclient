@@ -30,6 +30,10 @@ func (client *Model) createListeningSocket() error {
 	client.ListeningPort = port
 	client.dataSocket = fd
 
+	if err := client.sendListeningPortNumber(); err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+
 	return nil
 }
 
@@ -61,9 +65,9 @@ func bindRandomPort(socket int) (int, error) {
 	return -1, fmt.Errorf(errMsg, err)
 }
 
-func (client *Model) recvProtocolConfirmation() error {
+func (client *Model) recvProtocolConfirmation(fd int, sa syscall.Sockaddr) error {
 	errMsg := "receive protocol confirmation error: %v"
-	msg, err := client.recvData()
+	msg, err := client.recvData(fd)
 	if err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
@@ -73,11 +77,22 @@ func (client *Model) recvProtocolConfirmation() error {
 	return nil
 }
 
-func (client *Model) recvData() (string, error) {
+func (client *Model) recvData(fd int) (string, error) {
 	errMsg := "[data] %v"
-	msg, err := client.recv(client.dataSocket, DataReceiveTimeout, DataServerPrefix)
+	msg, err := client.recv(fd, DataReceiveTimeout, DataServerPrefix)
 	if err != nil {
 		return msg, fmt.Errorf(errMsg, err)
 	}
 	return msg, nil
+}
+
+
+func (client *Model) awaitServerConnection() (int, syscall.Sockaddr, error) {
+	// todo timeout
+	errMsg := "[ctrl] await server connection: %v"
+	nfd, sa, err := syscall.Accept(client.dataSocket)
+	if err != nil {
+		return -1, nil, fmt.Errorf(errMsg, err)
+	}
+	return nfd, sa, nil
 }
