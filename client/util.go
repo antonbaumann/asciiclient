@@ -3,11 +3,11 @@ package client
 import (
 	"errors"
 	"fmt"
+	"golang.org/x/sys/unix"
 	"math/rand"
 	"net"
 	"strconv"
 	"strings"
-	"syscall"
 )
 
 func convertIPv4ToArray(addr *net.IPAddr) ([4]byte, error) {
@@ -60,14 +60,14 @@ func FromNetstring(message string) (string, error) {
 	return lst[1][:length], nil
 }
 
-func SocketToFDSet(socket int) *syscall.FdSet {
-	p := new(syscall.FdSet)
+func SocketToFDSet(socket int) *unix.FdSet {
+	p := new(unix.FdSet)
 	p.Bits[socket/64] |= 1 << uint(socket) % 64
 	return p
 }
 
-func SecondsToTimeval(seconds int) *syscall.Timeval {
-	timeout := &syscall.Timeval{}
+func SecondsToTimeval(seconds int) *unix.Timeval {
+	timeout := &unix.Timeval{}
 	timeout.Sec = int64(seconds)
 	timeout.Usec = 0
 	return timeout

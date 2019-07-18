@@ -3,8 +3,8 @@ package client
 import (
 	"fmt"
 	"github.com/golang/glog"
+	"golang.org/x/sys/unix"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -20,7 +20,7 @@ type Model struct {
 	ctrlSocket     int
 	dataSocket     int
 	token          string
-	sockAddrRemote syscall.Sockaddr
+	sockAddrRemote unix.Sockaddr
 
 	buffer []byte
 }
@@ -63,15 +63,15 @@ func (client *Model) Connect(addr string, port int) error {
 }
 
 func (client *Model) Send(message string) error {
-	errMsg := "send error: %v"
-	nfd, sa, err := client.awaitServerConnection()
-	if err != nil {
-		return fmt.Errorf(errMsg, err)
-	}
-
-	if err := client.recvProtocolConfirmation(nfd, sa); err != nil {
-		return fmt.Errorf(errMsg, err)
-	}
+	//errMsg := "send error: %v"
+	//nfd, sa, err := client.awaitServerConnection()
+	//if err != nil {
+	//	return fmt.Errorf(errMsg, err)
+	//}
+	//
+	//if err := client.recvProtocolConfirmation(nfd, sa); err != nil {
+	//	return fmt.Errorf(errMsg, err)
+	//}
 	return nil
 }
 
@@ -99,7 +99,7 @@ func (client *Model) recv(socket int, timeout time.Duration, serverPrefix string
 	ch := make(chan *response, 1)
 
 	go func() {
-		length, _, err := syscall.Recvfrom(socket, client.buffer, 0)
+		length, _, err := unix.Recvfrom(socket, client.buffer, 0)
 		ch <- &response{length, err}
 	}()
 

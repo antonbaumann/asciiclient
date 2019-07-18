@@ -3,8 +3,8 @@ package client
 import (
 	"fmt"
 	"github.com/golang/glog"
+	"golang.org/x/sys/unix"
 	"net"
-	"syscall"
 	"time"
 )
 
@@ -78,7 +78,7 @@ func (client *Model) recvToken() error {
 func (client *Model) sendCtrl(message string) error {
 	errMsg := "[control] send error: %v"
 	netstring := ToNetstring(fmt.Sprintf("%v %v", CtrlClientPrefix, message))
-	err := syscall.Sendto(client.ctrlSocket, []byte(netstring), 0, client.sockAddrRemote)
+	err := unix.Sendto(client.ctrlSocket, []byte(netstring), 0, client.sockAddrRemote)
 	if err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
@@ -97,7 +97,7 @@ func (client *Model) recvCtrl() (string, error) {
 
 //createCtrlSocket creates a socket for the control channel
 func (client *Model) createCtrlSocket() error {
-	fd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_STREAM, 0)
+	fd, err := unix.Socket(unix.AF_INET6, unix.SOCK_STREAM, 0)
 	if err != nil {
 		return err
 	}
@@ -125,12 +125,12 @@ func (client *Model) dial(addr string, port int) error {
 		return fmt.Errorf(errMsg, err)
 	}
 
-	client.sockAddrRemote = &syscall.SockaddrInet6{
+	client.sockAddrRemote = &unix.SockaddrInet6{
 		Port: port,
 		Addr: ipv6,
 	}
 
-	err = syscall.Connect(client.ctrlSocket, client.sockAddrRemote)
+	err = unix.Connect(client.ctrlSocket, client.sockAddrRemote)
 	if err != nil {
 		return fmt.Errorf(errMsg, err)
 	}

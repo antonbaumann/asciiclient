@@ -3,8 +3,8 @@ package client
 import (
 	"fmt"
 	"github.com/golang/glog"
+	"golang.org/x/sys/unix"
 	"strconv"
-	"syscall"
 	"time"
 )
 
@@ -17,7 +17,7 @@ const (
 //createListeningSocket creates a socket for the data channel
 func (client *Model) createListeningSocket() error {
 	errMsg := "[data] create data socket error: %v"
-	fd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_STREAM, 0)
+	fd, err := unix.Socket(unix.AF_INET6, unix.SOCK_STREAM, 0)
 	if err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
@@ -54,18 +54,18 @@ func bindRandomPort(socket int) (int, error) {
 	nrRetries := 5
 	for i := 0; i < nrRetries; i++ {
 		port := GetRandomUserPort()
-		sa := &syscall.SockaddrInet6{
+		sa := &unix.SockaddrInet6{
 			Port: port,
 			Addr: inaddr6Any,
 		}
-		if err = syscall.Bind(socket, sa); err == nil {
+		if err = unix.Bind(socket, sa); err == nil {
 			return port, nil
 		}
 	}
 	return -1, fmt.Errorf(errMsg, err)
 }
 
-func (client *Model) recvProtocolConfirmation(fd int, sa syscall.Sockaddr) error {
+func (client *Model) recvProtocolConfirmation(fd int, sa unix.Sockaddr) error {
 	errMsg := "receive protocol confirmation error: %v"
 	msg, err := client.recvData(fd)
 	if err != nil {
@@ -84,20 +84,4 @@ func (client *Model) recvData(fd int) (string, error) {
 		return msg, fmt.Errorf(errMsg, err)
 	}
 	return msg, nil
-}
-
-
-func (client *Model) awaitServerConnection() (int, syscall.Sockaddr, error) {
-	// todo timeout
-	errMsg := "[ctrl] await server connection: %v"
-	timeout := SecondsToTimeval(int(DataReceiveTimeout.Seconds()))
-	sd, err := syscall.Select(0xbfff +1, SocketToFDSet(client.dataSocket), nil, nil, timeout)
-	if err != nil {
-		return -1, nil, fmt.Errorf(errMsg, fmt.Errorf("select: %v", err))
-	}
-	nfd, sa, err := syscall.Accept(sd)
-	if err != nil {
-		return -1, nil, fmt.Errorf(errMsg, fmt.Errorf("accept: %v", err))
-	}
-	return nfd, sa, nil
 }
