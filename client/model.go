@@ -15,31 +15,53 @@ const (
 
 type Model struct {
 	Nickname       string
-	RemotePort     int
-	ListeningPort  int
+	remotePort     int
+	remoteIP       string
+	listeningPort  int
 	ctrlSocket     int
 	dataSocket     int
 	token          string
+	lastMessageLen int
 	sockAddrRemote unix.Sockaddr
 
 	buffer []byte
 }
 
 //New creates a new Client
-func New(nickname string) *Model {
+func New(nickname string, remoteIP string, remotePort int) *Model {
 	return &Model{
-		Nickname: nickname,
-		buffer:   make([]byte, 4096),
+		Nickname:   nickname,
+		buffer:     make([]byte, 4096),
+		remotePort: remotePort,
+		remoteIP:   remoteIP,
 	}
 }
 
+func handle(err error) error {
+	fmt.Printf("Error: %v\n", err)
+	return err
+}
+
+func (client *Model) SendString(message string) error {
+	if err := client.Connect(); err != nil {
+		return handle(err)
+	}
+	if err := client.Send(message); err != nil {
+		return handle(err)
+	}
+	if err := client.Disconnect(); err != nil {
+		return handle(err)
+	}
+	return nil
+}
+
 //Connect creates the control channel to the remote host and negotiates the data channel
-func (client *Model) Connect(addr string, port int) error {
+func (client *Model) Connect() error {
 	errMsg := "connect error: %v"
 
 	glog.Info("started connection")
 
-	if err := client.dial(addr, port); err != nil {
+	if err := client.dial(); err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
 
@@ -47,13 +69,18 @@ func (client *Model) Connect(addr string, port int) error {
 		return fmt.Errorf(errMsg, err)
 	}
 
-	if err := client.sendNickname(); err != nil {
+	// send client nickname to server
+	if err := client.sendCtrl(client.Nickname); err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
 
-	if err := client.recvToken(); err != nil {
-		return fmt.Errorf(errMsg, err)
+	// receive token from server
+	token, err := client.recvCtrl()
+	if err != nil {
+		info := "[control] error receiving token: %v"
+		return fmt.Errorf(errMsg, fmt.Errorf(info, err))
 	}
+	client.token = token
 
 	if err := client.createListeningSocket(); err != nil {
 		return fmt.Errorf(errMsg, err)
@@ -63,15 +90,76 @@ func (client *Model) Connect(addr string, port int) error {
 }
 
 func (client *Model) Send(message string) error {
-	//errMsg := "send error: %v"
-	//nfd, sa, err := client.awaitServerConnection()
-	//if err != nil {
-	//	return fmt.Errorf(errMsg, err)
-	//}
-	//
-	//if err := client.recvProtocolConfirmation(nfd, sa); err != nil {
-	//	return fmt.Errorf(errMsg, err)
-	//}
+	errMsg := "send error: %v"
+	sa, err := client.awaitServerConnection()
+	if err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+
+	if err := client.recvProtocolConfirmation(sa); err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+
+	if err := client.sendData(client.Nickname); err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+
+	if err := client.validateToken(); err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+
+	// transfer message
+	if err := client.sendData(message); err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+	client.lastMessageLen = len(message)
+	glog.Info("message successfully transferred")
+
+	// receive new token
+	token, err := client.recvData()
+	if err != nil {
+		info := "[data] error receiving token: %v"
+		return fmt.Errorf(errMsg, fmt.Errorf(info, err))
+	}
+	client.token = token
+	glog.Info("received new token")
+
+	// close data socket
+	if err := unix.Close(client.dataSocket); err != nil {
+		info := "[data] error closing data channel: %v"
+		return fmt.Errorf(errMsg, fmt.Errorf(info, err))
+	}
+
+	return nil
+}
+
+func (client *Model) Disconnect() error {
+	errMsg := "disconnect error: %v"
+
+	if err := client.validateStringLength(); err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+
+	if err := client.sendCtrl(client.token); err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+
+	msg, err := client.recvCtrl()
+	if err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+
+	if msg != "ACK" {
+		err := fmt.Errorf("server sent [%v] should be [%v]", msg, "ACK")
+		return fmt.Errorf(errMsg, err)
+	}
+	glog.Infof("server accepted message transfer")
+
+	if err := unix.Close(client.ctrlSocket); err != nil {
+		info := "[ctrl] error closing control channel: %v"
+		return fmt.Errorf(errMsg, fmt.Errorf(info, err))
+	}
+
 	return nil
 }
 

@@ -27,7 +27,11 @@ func (client *Model) createListeningSocket() error {
 		return fmt.Errorf(errMsg, err)
 	}
 
-	client.ListeningPort = port
+	if err := unix.Listen(fd, 1); err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+
+	client.listeningPort = port
 	client.dataSocket = fd
 
 	if err := client.sendListeningPortNumber(); err != nil {
@@ -39,11 +43,11 @@ func (client *Model) createListeningSocket() error {
 
 func (client *Model) sendListeningPortNumber() error {
 	errMsg := "[data] send data port error: %v"
-	if err := client.sendCtrl(strconv.Itoa(client.ListeningPort)); err != nil {
+	if err := client.sendCtrl(strconv.Itoa(client.listeningPort)); err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
-	glog.Infof("sent listening port [%v] to server", client.ListeningPort)
-	glog.Infof("listening now on port %v", client.ListeningPort)
+	glog.Infof("sent listening port [%v] to server", client.listeningPort)
+	glog.Infof("listening now on port %v", client.listeningPort)
 	return nil
 }
 
@@ -65,23 +69,69 @@ func bindRandomPort(socket int) (int, error) {
 	return -1, fmt.Errorf(errMsg, err)
 }
 
-func (client *Model) recvProtocolConfirmation(fd int, sa unix.Sockaddr) error {
+func (client *Model) awaitServerConnection() (unix.Sockaddr, error) {
+	errMsg := "[data] await server connection: %v"
+	nfd, sa, err := unix.Accept(client.dataSocket)
+	if err != nil {
+		return nil, fmt.Errorf(errMsg, err)
+	}
+	client.dataSocket = nfd
+	return sa, nil
+}
+
+func (client *Model) recvProtocolConfirmation(sa unix.Sockaddr) error {
 	errMsg := "receive protocol confirmation error: %v"
-	msg, err := client.recvData(fd)
+	msg, err := client.recvData()
 	if err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
 	if msg != ProtocolVersion {
 		return fmt.Errorf(errMsg, "protocols do not match")
 	}
+	glog.Info("received protocol confirmation")
 	return nil
 }
 
-func (client *Model) recvData(fd int) (string, error) {
+func (client *Model) recvData() (string, error) {
 	errMsg := "[data] %v"
-	msg, err := client.recv(fd, DataReceiveTimeout, DataServerPrefix)
+	msg, err := client.recv(client.dataSocket, DataReceiveTimeout, DataServerPrefix)
 	if err != nil {
+		_ = client.sendDataError(err.Error())
 		return msg, fmt.Errorf(errMsg, err)
 	}
 	return msg, nil
+}
+
+//sendCtrl is a helper method for sending strings over the control channel
+func (client *Model) sendData(message string) error {
+	errMsg := "[data] send error: %v"
+	netstring := ToNetstring(fmt.Sprintf("%v %v", DataClientPrefix, message))
+	err := unix.Sendto(client.dataSocket, []byte(netstring), 0, client.sockAddrRemote)
+	if err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+	return nil
+}
+
+func (client *Model) sendDataError(message string) error {
+	errMsg := "[data] send error: %v"
+	netstring := ToNetstring(fmt.Sprintf("%v %v", ErrorPrefix, message))
+	err := unix.Sendto(client.dataSocket, []byte(netstring), 0, client.sockAddrRemote)
+	if err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+	return nil
+}
+
+func (client *Model) validateToken() error {
+	errMsg := "[data] error receiving token: %v"
+	token, err := client.recvData()
+	if err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+	if client.token != token {
+		return fmt.Errorf(errMsg, "server sent wrong token")
+	}
+	glog.Info("server sent valid token")
+	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/golang/glog"
 	"golang.org/x/sys/unix"
 	"net"
+	"strconv"
 	"time"
 )
 
@@ -52,32 +53,20 @@ func (client *Model) receiveProtocolVersion() error {
 	return nil
 }
 
-//sendNickname sends the client nickname to the server
-func (client *Model) sendNickname() error {
-	errMsg := "[control] send nickname error: %v"
-	if err := client.sendCtrl(client.Nickname); err != nil {
-		return fmt.Errorf(errMsg, err)
-	}
-	glog.Infof("sent client nickname [%v] to server", client.Nickname)
-	return nil
-}
-
-//recvToken receives the token from the server
-func (client *Model) recvToken() error {
-	errMsg := "[control] receive token error: %v"
-	token, err := client.recvCtrl()
-	if err != nil {
-		return fmt.Errorf(errMsg, err)
-	}
-	client.token = token
-	glog.Infof("received token from server: %v", client.token)
-	return nil
-}
-
 //sendCtrl is a helper method for sending strings over the control channel
 func (client *Model) sendCtrl(message string) error {
 	errMsg := "[control] send error: %v"
 	netstring := ToNetstring(fmt.Sprintf("%v %v", CtrlClientPrefix, message))
+	err := unix.Sendto(client.ctrlSocket, []byte(netstring), 0, client.sockAddrRemote)
+	if err != nil {
+		return fmt.Errorf(errMsg, err)
+	}
+	return nil
+}
+
+func (client *Model) sendCtrlError(message string) error {
+	errMsg := "[control] send error: %v"
+	netstring := ToNetstring(fmt.Sprintf("%v %v", ErrorPrefix, message))
 	err := unix.Sendto(client.ctrlSocket, []byte(netstring), 0, client.sockAddrRemote)
 	if err != nil {
 		return fmt.Errorf(errMsg, err)
@@ -90,6 +79,7 @@ func (client *Model) recvCtrl() (string, error) {
 	errMsg := "[control] %v"
 	msg, err := client.recv(client.ctrlSocket, CtrlReceiveTimeout, CtrlServerPrefix)
 	if err != nil {
+		_ = client.sendCtrlError(err.Error())
 		return msg, fmt.Errorf(errMsg, err)
 	}
 	return msg, nil
@@ -106,7 +96,7 @@ func (client *Model) createCtrlSocket() error {
 }
 
 // dial creates a connection to the remote host
-func (client *Model) dial(addr string, port int) error {
+func (client *Model) dial() error {
 	errMsg := "[control] dial error: %v"
 
 	// create a tcp socket
@@ -115,7 +105,7 @@ func (client *Model) dial(addr string, port int) error {
 	}
 
 	// get ip address from url
-	ipAddr, err := net.ResolveIPAddr("ip6", addr)
+	ipAddr, err := net.ResolveIPAddr("ip6", client.remoteIP)
 	if err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
@@ -126,7 +116,7 @@ func (client *Model) dial(addr string, port int) error {
 	}
 
 	client.sockAddrRemote = &unix.SockaddrInet6{
-		Port: port,
+		Port: client.remotePort,
 		Addr: ipv6,
 	}
 
@@ -136,5 +126,23 @@ func (client *Model) dial(addr string, port int) error {
 	}
 
 	glog.Info("established connection to remote server on the control channel")
+	return nil
+}
+
+func (client *Model) validateStringLength() error {
+	errMsg := "[control] validate string length: %v"
+	lenStr, err := client.recvCtrl()
+	if err != nil{
+		return fmt.Errorf(errMsg, err)
+	}
+	l, err := strconv.Atoi(lenStr)
+	if err != nil{
+		return fmt.Errorf(errMsg, err)
+	}
+	if l != client.lastMessageLen {
+		err := fmt.Errorf("string lengths do not match: server=%v client=%v", l, client.lastMessageLen)
+		return fmt.Errorf(errMsg, err)
+	}
+	glog.Info("server sent valid string length")
 	return nil
 }
