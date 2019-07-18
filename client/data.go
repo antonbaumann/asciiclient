@@ -71,12 +71,29 @@ func bindRandomPort(socket int) (int, error) {
 
 func (client *Model) awaitServerConnection() (unix.Sockaddr, error) {
 	errMsg := "[data] await server connection: %v"
-	nfd, sa, err := unix.Accept(client.dataSocket)
-	if err != nil {
-		return nil, fmt.Errorf(errMsg, err)
+
+	type response struct {
+		nfd int
+		sa  unix.Sockaddr
+		err error
 	}
-	client.dataSocket = nfd
-	return sa, nil
+	ch := make(chan *response, 1)
+
+	go func() {
+		nfd, sa, err := unix.Accept(client.dataSocket)
+		ch <- &response{nfd, sa, err}
+	}()
+
+	select {
+	case resp := <-ch:
+		if resp.err != nil {
+			return nil, fmt.Errorf(errMsg, resp.err)
+		}
+		client.dataSocket = resp.nfd
+		return resp.sa, nil
+	case <-time.After(DataReceiveTimeout):
+		return nil, fmt.Errorf(errMsg, "timeout")
+	}
 }
 
 func (client *Model) recvProtocolConfirmation(sa unix.Sockaddr) error {
