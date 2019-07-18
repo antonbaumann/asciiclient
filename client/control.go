@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"github.com/golang/glog"
 	"net"
 	"syscall"
 	"time"
@@ -26,6 +27,7 @@ func (client *Model) exchangeProtocolVersion() error {
 		return fmt.Errorf(errMsg, err)
 	}
 
+	glog.Info("successfully exchanged protocol version")
 	return nil
 }
 
@@ -56,6 +58,7 @@ func (client *Model) sendNickname() error {
 	if err := client.sendCtrl(client.Nickname); err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
+	glog.Infof("sent client nickname [%v] to server", client.Nickname)
 	return nil
 }
 
@@ -66,9 +69,8 @@ func (client *Model) recvToken() error {
 	if err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
-
 	client.token = token
-
+	glog.Infof("received token from server: %v", client.token)
 	return nil
 }
 
@@ -132,5 +134,7 @@ func (client *Model) dial(addr string, port int) error {
 	if err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
+
+	glog.Info("established connection to remote server on the control chennel")
 	return nil
 }

@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"github.com/golang/glog"
 	"strconv"
 	"syscall"
 	"time"
@@ -37,6 +38,8 @@ func (client *Model) sendListeningPortNumber() error {
 	if err := client.sendCtrl(strconv.Itoa(client.ListeningPort)); err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
+	glog.Infof("sent listening port [%v] to server", client.ListeningPort)
+	glog.Infof("listening now on port %v", client.ListeningPort)
 	return nil
 }
 

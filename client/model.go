@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"github.com/golang/glog"
 	"strings"
 	"syscall"
 	"time"
@@ -35,6 +36,8 @@ func New(nickname string) *Model {
 //Connect creates the control channel to the remote host and negotiates the data channel
 func (client *Model) Connect(addr string, port int) error {
 	errMsg := "connect error: %v"
+
+	glog.Info("started connection")
 
 	if err := client.dial(addr, port); err != nil {
 		return fmt.Errorf(errMsg, err)
