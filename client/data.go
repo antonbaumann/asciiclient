@@ -71,6 +71,7 @@ func (client *Model) recvProtocolConfirmation() error {
 	if msg != ProtocolVersion {
 		return fmt.Errorf(errMsg, "protocols do not match")
 	}
+	return nil
 }
 
 func (client *Model) recvData() (string, error) {

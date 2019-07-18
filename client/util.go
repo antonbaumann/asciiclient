@@ -52,6 +52,10 @@ func FromNetstring(message string) (string, error) {
 	if err != nil {
 		return message, fmt.Errorf("not a netstring: %v", message)
 	}
+	str := lst[1]
+	if strings.LastIndex(str, ",") != length {
+		return message, fmt.Errorf("netstring has wrong length prefix: %v", message)
+	}
 	return lst[1][:length], nil
 }
 
