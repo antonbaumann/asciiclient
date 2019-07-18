@@ -13,10 +13,6 @@ const (
 	DataReceiveTimeout = 5 * time.Second
 )
 
-type data struct {
-	err error
-}
-
 //createListeningSocket creates a socket for the data channel
 func (client *Model) createListeningSocket() error {
 	errMsg := "[data] create data socket error: %v"
@@ -38,7 +34,7 @@ func (client *Model) createListeningSocket() error {
 
 func (client *Model) sendListeningPortNumber() error {
 	errMsg := "[data] send data port error: %v"
-	if err := client.sendCtrl(ToNetstring(strconv.Itoa(client.ListeningPort))); err != nil {
+	if err := client.sendCtrl(strconv.Itoa(client.ListeningPort)); err != nil {
 		return fmt.Errorf(errMsg, err)
 	}
 	return nil
