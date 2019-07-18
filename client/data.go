@@ -93,11 +93,11 @@ func (client *Model) awaitServerConnection() (int, syscall.Sockaddr, error) {
 	timeout := SecondsToTimeval(int(DataReceiveTimeout.Seconds()))
 	_, err := syscall.Select(0xbfff +1, SocketToFDSet(client.dataSocket), nil, nil, timeout)
 	if err != nil {
-		return -1, nil, fmt.Errorf(errMsg, err)
+		return -1, nil, fmt.Errorf(errMsg, fmt.Errorf("select: %v", err))
 	}
 	nfd, sa, err := syscall.Accept(client.dataSocket)
 	if err != nil {
-		return -1, nil, fmt.Errorf(errMsg, err)
+		return -1, nil, fmt.Errorf(errMsg, fmt.Errorf("accept: %v", err))
 	}
 	return nfd, sa, nil
 }
