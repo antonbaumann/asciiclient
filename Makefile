@@ -16,7 +16,7 @@ clean:
 	rm -f $(BINARY_NAME)
 	rm -f $(BINARY_UNIX)
 run:
-	$(GOBUILD) -o $(BINARY_NAME) -v ./...
-	./$(BINARY_NAME)
+	$(GOBUILD) -o $(BINARY_NAME)
+	$(GORUN) ./$(BINARY_NAME)
 deps:
 	$(GOGET) ./...
