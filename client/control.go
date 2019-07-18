@@ -135,6 +135,6 @@ func (client *Model) dial(addr string, port int) error {
 		return fmt.Errorf(errMsg, err)
 	}
 
-	glog.Info("established connection to remote server on the control chennel")
+	glog.Info("established connection to remote server on the control channel")
 	return nil
 }

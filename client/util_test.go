@@ -23,3 +23,8 @@ func TestFromNetstringWrongLength(t *testing.T) {
 	}
 }
 
+func TestSecondsToTimeval(t *testing.T) {
+	input := 5
+	timeval := SecondsToTimeval(input)
+	assert.Equal(t, int64(input) * 1000000000, timeval.Nano())
+}

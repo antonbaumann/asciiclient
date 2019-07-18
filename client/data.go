@@ -90,6 +90,11 @@ func (client *Model) recvData(fd int) (string, error) {
 func (client *Model) awaitServerConnection() (int, syscall.Sockaddr, error) {
 	// todo timeout
 	errMsg := "[ctrl] await server connection: %v"
+	timeout := SecondsToTimeval(int(DataReceiveTimeout.Seconds()))
+	err := syscall.Select(0xbfff +1, SocketToFDSet(client.dataSocket), nil, nil, timeout)
+	if err != nil {
+		return -1, nil, fmt.Errorf(errMsg, err)
+	}
 	nfd, sa, err := syscall.Accept(client.dataSocket)
 	if err != nil {
 		return -1, nil, fmt.Errorf(errMsg, err)
